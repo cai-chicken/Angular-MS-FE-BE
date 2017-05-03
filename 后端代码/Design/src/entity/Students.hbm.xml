@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+	<class name="entity.Students" table="STUDENT">
+	
+		<!-- 二级缓存配置
+		<cache usage="read-only" region="Student" />
+	 	-->
+
+		<id name="id" type="java.lang.String" length="12">
+		</id>
+
+		<property name="name" type="java.lang.String">
+		</property>
+
+		<property name="gender" type="java.lang.String">
+		</property>
+
+		<property name="politicalStatus" type="java.lang.String">
+		</property>
+
+		<property name="birthday" type="java.lang.String">
+		</property>
+
+		<property name="profession" type="java.lang.String">
+		</property>
+		
+		<property name="birthplace" type="java.lang.String">
+		</property>
+	</class>
+</hibernate-mapping>

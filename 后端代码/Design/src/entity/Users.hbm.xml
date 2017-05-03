@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+	<class name="entity.Users" table="USER">
+	<!-- 二级缓存配置
+		<cache usage="read-only" region="Users" />
+	 -->
+		<id name="uid" type="java.lang.Integer">
+			<generator class="increment" />
+		</id>
+		
+		<property name="username" type="java.lang.String">
+		</property>
+		
+		<property name="password" type="java.lang.String">
+		</property>
+	</class>
+</hibernate-mapping>

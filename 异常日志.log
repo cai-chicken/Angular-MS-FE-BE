@@ -1,0 +1,190 @@
+--------------后端项目搭建完后转移到Eclipse后记录的异常日志--------------
+
+项目从MyEclipse转移到Eclipse上后，jsp文件第一行报错
+
+The superclass "javax.servlet.http.HttpServlet" was not found on the Java Build Path
+
+猜测可能是缺少相关的jar
+
+找到项目右键>Build Path>Configuration Build Path>Add Library>
+Server Runtime>Apache Tomcat v7.0>Finish
+添加服务器运行环境
+
+--------------
+
+
+项目发布到Tomcat服务器时报错
+
+Could not load the Tomcat server configuration at \Servers\Tomcat v7.0 Server at localhost-config
+
+可能是导入新项目，配置不正确的缘故
+
+Window>Server>Runtime Environments>Remove Tomcat服务器>重新添加一遍
+
+--------------
+
+
+引入json依赖的jar包后，书写时不报错，运行在服务器上时报错
+
+java.lang.ClassNotFoundException: net.sf.json.JSONObject
+
+百度发现可能是依赖的jar包没有发布到服务器上，移除项目，重新发布项目。
+
+--------------
+
+
+执行action.studentsAction时报错
+
+Exception occurred during processing request: null
+
+检查以前json练习的代码，发现json和out对象定义了，但是未进行实例化
+
+--------------
+
+
+Exception occurred during processing request: Method "queryAllStudents" failed for object action.studentsAction@12ccaf9
+ognl.MethodFailedException: Method "queryAllStudents" failed for object action.studentsAction@12ccaf9 [java.lang.NoClassDefFoundError: net/sf/ezmorph/Morpher]
+
+检查发现还是包没有引入正确，错把source code 当成jar包
+
+重新引入公共包beanutils-1.8.0，collections-3.1，和json相关包ezmorph-1.0.6
+
+--------------
+
+Could not find action or result: /stuInforM_sh/get_queryAllStudents.action
+No result defined for action action.studentsAction and result students_query_success - action - file:/E:/EclipseNeonWorkspaces/.metadata/.plugins/org.eclipse.wst.server.core/tmp0/wtpwebapps/ContentManagementSystem/WEB-INF/classes/struts.xml:36:67
+
+--------------
+
+
+ERROR: HHH000091: Expected type: long, actual value: java.sql.Timestamp
+IllegalArgumentException occurred while calling setter for property [entity.Students.sbirthday (expected type = long)]; target = [Student [sid=2016000002, sname=西门吹风, ssex=男, brithday=0, address=null]], property value = [2016-10-24 00:00:00.0]
+--------------
+
+请求接口更新学生信息时出错
+
+java.lang.IllegalArgumentException: attempt to create delete event with null entity
+
+org.hibernate.StaleStateException: Batch update returned unexpected row count from update [0]; actual row count: 0; expected: 1
+
+刚开始报日期相关错误，以为是日期格式不正确引起的，后来查看数据表发现，
+没有指定sid对应的数据列存在，找不到自然就报错了。
+
+--------------
+
+严重: Exception occurred during processing request: 0
+java.lang.ArrayIndexOutOfBoundsException: 0
+
+测试用户登录接口时，未指定JSONStringify的第二个参数，可变长度布尔值数组
+...(loginUname, ?);，但是在方法内部使用了
+
+解决，try catch捕获异常，有异常表示未传参数，catch块执行json.put("errno", 0)。
+
+--------------
+
+org.hibernate.TransactionException: nested transactions not supported
+（不支持事务嵌套）
+
+
+--------------
+
+场景：用户登录完毕后，刷新页面，sessionid每次都不一样，无法保持登录状态
+
+初步尝试：多次尝试发现，同样的请求，未跨域的情况下，session状态正常，
+但是跨域的时候，每次sessionid都是不一样的，无法保持会话状态
+
+解决办法：通过搜索：struts2跨域请求无法保持session等关键字，
+	发现Tomcat对于session的识别是通过写入到Cookie中的JSESSION进行的，
+	而发送跨域请求时，Tomcat会认为又是一个新的对话，又会重新写入到Cookie中
+
+	angular中config()中添加一条配置：
+		$httpProvider.defaults.withCredentials = true;
+		表示向服务器端发送cookie
+--------------
+
+场景：向服务器端发送cookie后，跨域请求时，抛出异常
+
+异常信息：XMLHttpRequest cannot load http://localhost:8888/Design/user_whetherLogged.action. The value of the 'Access-Control-Allow-Origin' header in the response must not be the wildcard '*' when the request's credentials mode is 'include'. Origin 'http://localhost:81' is therefore not allowed access. The credentials mode of requests initiated by the XMLHttpRequest is controlled by the withCredentials attribute.
+
+解决： 根据错误信息提示，客户端想服务端发送cookie时，不能使用*通配符允许所有的域，需要手动指定具体的域，于是将Access-Control-Allow-Origin =>http://localhost:81
+
+
+--------------
+
+场景： 指定完只允许特定域允许跨域后，抛出异常
+
+异常信息：XMLHttpRequest cannot load http://localhost:8888/Design/user_whetherLogged.action. The value of the 'Access-Control-Allow-Credentials' header in the response is '' which must be 'true' when the request's credentials mode is 'include'. Origin 'http://localhost:81' is therefore not allowed access. The credentials mode of requests initiated by the XMLHttpRequest is controlled by the withCredentials attribute.
+
+解决：根据错误信息，后端需要添加响应Access-Control-Allow-Credentials => true
+表示允许客户端发送cookie
+
+--------------
+
+场景： 测试用户注册时，用户名是否被注册事件时，抛出异常
+第一次执行不会抛，执行多次后抛异常
+
+异常信息：org.hibernate.TransactionException: nested transactions not supported
+
+解决：根据异常信息，表示不支持事务嵌套，分析可能是在事务内再次开启了事务，保证每次事务执行完毕后将事务提交 => ts.commit();即可
+
+
+--------------
+
+场景： 通过用户是否被注册测试后，正常注册时抛出异常
+
+异常信息1：org.hibernate.SessionException: Session was already closed
+
+异常信息2：org.hibernate.TransactionException: Transaction not successfully started
+
+解决：分析异常信息可知，Session被提前关闭，事务启动不成功
+由于在finally中将ts.commit();引起的，将其移除，改为在各单独的代码块内单独提交事务
+例如：if(...){ts.commit();} else if (...){ts.commit();}
+
+--------------
+
+场景：处理完用户注册模块功能后，正常登录没问题，当输入错误用户名登录时，抛出异常
+
+异常信息：java.lang.StackOverflowError
+	at java.util.HashMap$Node.hashCode(HashMap.java:296)
+	at java.util.AbstractMap.hashCode(AbstractMap.java:530)
+	at java.util.Objects.hashCode(Objects.java:98)
+
+解决：堆栈溢出异常，搜索"java.lang.StackOverflowError hasCode"相关信息得知，
+当HashMap存储值为集合对象时，想要获取集合对象的Hash是需要遍历，所有子元素的，如果此时出现，子元素再次引用父级或以上元素时，出现循环引用，不断的遍历子元素获取hashCode，导致堆栈溢出异常；
+
+	于是检测代码发现，如下一句：map.put("data", map);
+	map的子元素"data"引用了map，循环引用，抛出异常，将其删除即可
+
+不光是Map其他集合对象，List，Set，Stack计算hashCode，都是通过遍历子元素hashCode拼接的，因此需要注意不要直接或间接的引用自身。
+
+--------------
+
+场景：设置完学生数据表birthday为varchar(20)，hibernate持久化类映射的数据类型为：java.sql.Timestamp，执行queryAll.action后，抛出异常
+
+异常信息：ERROR: Cannot convert value '1493456033564' from column 5 to TIMESTAMP.
+org.hibernate.exception.GenericJDBCException: could not execute query
+
+解决：根据异常信息，数据表中的数据类型和映射文件指定的类型，无法转换，
+将数据库中的birthday列修改为timestamp或date即可
+
+
+--------------
+
+场景：发送新增学生请求时，抛出异常
+
+异常信息：Students [id=null, name=薛之谦, profession=音乐]
+org.hibernate.id.IdentifierGenerationException: ids for this class must be manually assigned before calling save(): entity.Students
+java.lang.NumberFormatException: For input string: "201400000002"
+
+解决：根据异常信息，是字符串转换成数字的过程中出现异常，分析报错位置，尝试发现
+parseInt支持的最大正整数 => 2147483647，2^31-1。而学号的长度是12位，将数据库中的学号（id）修改即可。
+
+--------------
+
+场景：发送修改学生请求时，抛出异常
+
+异常信息：org.hibernate.StaleStateException: Batch update returned unexpected row count from update [0]; actual row count: 0; expected: 1
+
+解决：修改学生需要根据id，确保要修改的id存在即可。
+
+--------------
